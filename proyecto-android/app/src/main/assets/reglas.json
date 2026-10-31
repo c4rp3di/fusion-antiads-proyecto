@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "vast": ["/gampad/ads", "output=vast", "output=xml_vast", "output=vmap", "/vast/", "/vast?", "vast.xml", "ad_type=video"],
+  "stubs": [
+    {"patron": "/tag/js/gpt.js", "stub": "gpt"},
+    {"patron": "googletagservices.com/tag/js/gpt", "stub": "gpt"},
+    {"patron": "/pubads_impl", "stub": "gpt"},
+    {"patron": "imasdk.googleapis.com/js/sdkloader/ima3", "stub": "ima"},
+    {"patron": "/pagead/js/adsbygoogle.js", "stub": "adsbygoogle"}
+  ],
+  "juguete": ["phncdn.com/pre_videos/"],
+  "permitir": ["trafficjunky.net/delivery/js/abp"],
+  "sitios": [
+    {"host": "*", "tecnicas": ["css", "hls"]},
+    {"host": "youtube.com", "tecnicas": ["yt", "skip", "css"]},
+    {"host": "youtube-nocookie.com", "tecnicas": ["yt", "skip"]},
+    {"host": "pornhub.com", "tecnicas": ["skip"]}
+  ]
+}
