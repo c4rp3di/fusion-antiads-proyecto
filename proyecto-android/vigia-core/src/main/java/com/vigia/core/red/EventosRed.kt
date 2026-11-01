@@ -45,6 +45,12 @@ interface ObservadorTrafico {
 
     /** Se llama cada vez que el filtro bloquea un dominio (por DNS o por SNI). */
     fun alBloqueo(dominio: String) {}
+
+    /**
+     * Igual que [alBloqueo] pero dice por qué capa se bloqueó («dns» o «sni») y de qué app era, si se pudo saber
+     * («desconocida» si no). Por defecto llama a [alBloqueo], así que los observadores antiguos no cambian.
+     */
+    fun alBloqueoDe(dominio: String, capa: String, app: String) { alBloqueo(dominio) }
 }
 
 /** Observador mínimo: solo cuenta bloqueos, en memoria, sin guardar nada. */
