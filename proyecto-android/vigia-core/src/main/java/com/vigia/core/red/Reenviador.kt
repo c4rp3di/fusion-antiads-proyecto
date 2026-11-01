@@ -45,7 +45,7 @@ class Reenviador(
     private val grabando: () -> Boolean,
     private val alEvento: (EventoRed) -> Unit,
     private val alDns: (Int, String, ByteArray, ByteArray) -> Unit,
-    private val alBloqueo: (String) -> Unit,
+    private val alBloqueo: (String, String, String) -> Unit,
     private val alFallar: (String) -> Unit,
     private val desvioTcp: DesvioTcp? = null
 ) {
@@ -436,7 +436,7 @@ class Reenviador(
         if (t.sni.isNotEmpty() && filtro.dominioBloqueado(t.sni)) {
             t.retenido.clear()
             t.bloqueada = true
-            alBloqueo(t.sni)
+            alBloqueo(t.sni, "sni", t.app)
             try {
                 hilos.execute { cerrar(t, true) }
             } catch (e: RejectedExecutionException) {
@@ -773,7 +773,7 @@ class Reenviador(
             if (consulta != null && filtro.dominioBloqueadoEnDns(consulta.nombre)) {
                 val respuesta = DnsParser.construirBloqueo(carga, respuestaBloqueo)
                 escribir(Paquetes.construirUdp(destino, origen, 53, sp, respuesta))
-                alBloqueo(consulta.nombre)
+                alBloqueo(consulta.nombre, "dns", "desconocida")
                 alDns(-1, "desconocida", carga, respuesta)
                 return
             }
