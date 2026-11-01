@@ -52,6 +52,10 @@ interface PoliticaMitm {
 interface EventosMitm {
     fun alBloquear(host: String, ruta: String, tipo: TipoRecurso) {}
     fun alInyectarCss(host: String) {}
+    /** Empieza a atenderse una conexión descifrada de [app]. Los eventos siguientes de ESTE hilo pertenecen a ella. */
+    fun alAbrirConexion(app: String, host: String) {}
+    /** Termina la conexión abierta con [alAbrirConexion] en este hilo. */
+    fun alCerrarConexion() {}
     /** El cliente aceptó nuestro certificado: la conexión está siendo descifrada. */
     fun alConexionDescifrada(host: String) {}
     /** Resumen de cada respuesta HTTP que pasa por el proxy (para diagnóstico). [longitud] = -1 si no se conoce. */
