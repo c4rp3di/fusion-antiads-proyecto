@@ -90,33 +90,6 @@ object Laboratorio {
     fun reiniciarConteo() = conteo.clear()
 }
 
-/** Registro de lo que han hecho las técnicas. Solo en memoria. Se puede copiar y enviar para diagnosticar. */
-object Diagnostico {
-    private const val MAX = 2500
-    private val lineas = ArrayDeque<String>()
-    private val hora = SimpleDateFormat("HH:mm:ss", Locale.US)
-    private val tipos = HashMap<String, Int>()
-
-    @Synchronized
-    fun porTipo(): Map<String, Int> = HashMap(tipos)
-
-    @Synchronized
-    fun anotar(tipo: String, texto: String) {
-        tipos[tipo] = (tipos[tipo] ?: 0) + 1
-        if (lineas.size >= MAX) lineas.removeFirst()
-        lineas.addLast(hora.format(Date()) + "  " + tipo.padEnd(10) + " " + texto.take(170))
-    }
-
-    @Synchronized
-    fun texto(ultimas: Int = MAX): String = lineas.toList().takeLast(ultimas).joinToString("\n")
-
-    @Synchronized
-    fun vaciar() {
-        lineas.clear()
-        tipos.clear()
-    }
-}
-
 /** Reglas editables (JSON): patrones de peticiones y técnicas por sitio. */
 class Reglas(
     val vast: List<String>,
@@ -243,7 +216,7 @@ class MotorReglas(contexto: Context, private val base: FiltroAdBlock) : FiltroCo
         // Lista «permitir» de las reglas: se deja pasar al servidor real (p. ej. el script que detecta bloqueadores).
         val url = (host + ruta).lowercase()
         if (reglas().permitir.any { url.contains(it) }) {
-            Diagnostico.anotar("permitido", host + ruta)
+            Diagnostico.anotar("permitido", ruta, EventosLab.appActual(), host)
             return false
         }
         return clasico.bloquear(host, ruta, tipo)
@@ -295,39 +268,47 @@ class MotorReglas(contexto: Context, private val base: FiltroAdBlock) : FiltroCo
     }
 }
 
-/** Contadores y diagnóstico de lo que ocurre en el proxy. */
+/** Contadores y registro de lo que ocurre en el proxy. */
 object EventosLab : EventosMitm {
+    /** App de la conexión que atiende ESTE hilo (la fija el proxy al abrirla). */
+    private val appHilo = ThreadLocal<String>()
+    private fun app(): String = appHilo.get() ?: ""
+    fun appActual(): String = app()
+
+    override fun alAbrirConexion(app: String, host: String) { appHilo.set(app) }
+    override fun alCerrarConexion() { appHilo.remove() }
+
     override fun alBloquear(host: String, ruta: String, tipo: TipoRecurso) {
         MitmEstado.vaciados.incrementAndGet()
         Laboratorio.contar("clasico")
         Estadisticas.registrar(host)
-        Diagnostico.anotar("clasico", host + ruta)
+        Diagnostico.anotar("clasico", ruta, app(), host)
     }
 
     override fun alInyectarCss(host: String) {
         MitmEstado.paginasLimpias.incrementAndGet()
         Laboratorio.contar("css")
-        Diagnostico.anotar("css", host)
+        Diagnostico.anotar("css", "CSS inyectado", app(), host)
     }
 
     override fun alConexionDescifrada(host: String) { MitmEstado.descifradas.incrementAndGet() }
 
     override fun alFallbackPinning(app: String, host: String, motivo: String) {
         MitmEstado.rechazos.incrementAndGet()
-        Diagnostico.anotar("rechazo", app + " → " + host + " (" + motivo.take(50) + ")")
+        Diagnostico.anotar("rechazo", motivo.take(60), app, host)
     }
 
     override fun alTecnica(tecnica: String, host: String, ruta: String) {
         val base = tecnica.substringBefore(':')
         Laboratorio.contar(if (base == "stub") "stubs" else base)
-        Diagnostico.anotar(tecnica, host + ruta)
+        Diagnostico.anotar(tecnica, ruta, app(), host)
     }
 
     override fun alTelemetria(host: String, datos: String) {
         if (!Laboratorio.activaCache("pagina")) return
         for (l in Paginas.procesar(host, datos)) {
             val tipo = l.substringAfter(' ').substringBefore(' ')
-            Diagnostico.anotar("pág:" + clave(tipo), l)
+            Diagnostico.anotar("pág:" + clave(tipo), l.substringAfter(' '), app(), host)
         }
     }
 
@@ -349,8 +330,12 @@ object EventosLab : EventosMitm {
             tipo.contains("dash") || tipo.contains("octet-stream") || longitud >= 300_000L ||
             r.endsWith(".mp4") || r.endsWith(".m4s") || r.endsWith(".ts") || r.endsWith(".m3u8") || r.endsWith(".webm") || r.endsWith(".mpd")
         if (!multimedia && !todas) return
-        Diagnostico.anotar("req", codigo.toString() + " " + tipo.take(22) + " " + (if (longitud >= 0) (longitud / 1024).toString() + "KB" else "?KB") + "  " + host + ruta)
+        Diagnostico.anotar(
+            "req",
+            codigo.toString() + " " + tipo.take(22) + " " + (if (longitud >= 0) (longitud / 1024).toString() + "KB" else "?KB") + "  " + ruta,
+            app(), host
+        )
     }
 
-    override fun alError(host: String, mensaje: String) { Diagnostico.anotar("error", host + " " + mensaje) }
+    override fun alError(host: String, mensaje: String) { Diagnostico.anotar("error", mensaje, app(), host) }
 }
