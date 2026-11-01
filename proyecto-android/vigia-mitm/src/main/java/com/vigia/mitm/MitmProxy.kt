@@ -113,6 +113,7 @@ class MitmProxy(
             val host = (hojas.nombreVisto(puertoCliente) ?: origen.ip).lowercase()
             ssl.soTimeout = 60_000
             remoto = conectarRemoto(origen, host)
+            eventos.alAbrirConexion(origen.app, host)
             eventos.alConexionDescifrada(host)
             bucle(ssl, remoto, host)
         } catch (e: Exception) {
@@ -120,6 +121,7 @@ class MitmProxy(
                 eventos.alError(origen.ip, resumen(e))
             }
         } finally {
+            eventos.alCerrarConexion()
             cerrar(remoto); cerrar(ssl); cerrar(cliente)
         }
     }
