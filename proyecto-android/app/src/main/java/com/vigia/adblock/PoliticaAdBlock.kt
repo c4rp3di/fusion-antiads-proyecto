@@ -26,14 +26,14 @@ class PoliticaAdBlock(contexto: Context) : PoliticaMitm {
 
     override fun alFallarHandshake(app: String, ip: String, host: String, motivo: String) {
         if (NAVEGADORES.contains(app)) {
-            Diagnostico.anotar("navegador", app + " cerró " + host + " (no se excluye)")
+            Diagnostico.anotar("navegador", "cerró la conexión (no se excluye)", app, host)
             return
         }
         // El cliente cerró esta conexión (no se puede continuar un TLS ya rechazado); la siguiente, el reintento de la
         // app, irá directa al servidor real porque intermediar() ya devuelve falso.
         if (exentas.add(clave(app, ip))) {
             Ajustes.setMitmExentas(c, HashSet(exentas))
-            Diagnostico.anotar("exento", clave(app, ip))
+            Diagnostico.anotar("exento", "queda sin descifrar", app, host)
         }
     }
 
