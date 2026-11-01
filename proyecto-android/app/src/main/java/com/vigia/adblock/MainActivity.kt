@@ -119,10 +119,6 @@ class MainActivity : ActividadBase() {
             Vistas.anchoCompleto(this, 8)
         )
         raiz.addView(
-            Vistas.boton(this, "Registro DNS por app", TipoBoton.TONAL) { startActivity(Intent(this, RegistroDnsActivity::class.java)) },
-            Vistas.anchoCompleto(this, 8)
-        )
-        raiz.addView(
             Vistas.boton(this, "Ajustes", TipoBoton.TONAL) { startActivity(Intent(this, AjustesActivity::class.java)) },
             Vistas.anchoCompleto(this, 0)
         )
