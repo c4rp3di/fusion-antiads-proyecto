@@ -32,7 +32,10 @@ object NotificacionSesion {
         val texto: String,
         val iconoRes: Int = R.drawable.vc_ic_notificacion,
         val actividad: Class<*>? = null,
-        val textoDetener: String? = "Detener"
+        val textoDetener: String? = "Detener",
+        /** Segundo botón opcional: texto y acción que recibirá el servicio al tocarlo. */
+        val textoExtra: String? = null,
+        val accionExtra: String? = null
     )
 
     fun crearCanal(contexto: Context, datos: Datos) {
@@ -67,6 +70,14 @@ object NotificacionSesion {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             b.addAction(0, datos.textoDetener, detener)
+        }
+        val extra = datos.accionExtra
+        if (datos.textoExtra != null && extra != null && servicio != null) {
+            val pi = PendingIntent.getService(
+                contexto, 2, Intent(contexto, servicio).setAction(extra),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            b.addAction(0, datos.textoExtra, pi)
         }
         return b.build()
     }
