@@ -136,6 +136,31 @@ abstract class NucleoVpnService : VpnService() {
         super.onDestroy()
     }
 
+    /**
+     * Cierra el túnel actual y abre otro con la configuración que devuelva [crearConfig] ahora (por ejemplo tras cambiar un
+     * ajuste desde la notificación), SIN parar el servicio ni quitar la notificación.
+     */
+    protected fun reconfigurar() {
+        scope.launch(Dispatchers.Default) {
+            val actual = ejecucion
+            if (actual != null) {
+                synchronized(actual) { actual.activa = false }
+                ejecucion = null
+                VpnEstado.activa.value = false
+                try {
+                    actual.interfaz.close()
+                } catch (e: IOException) {
+                }
+                actual.hilo?.interrupt()
+                actual.reenviador?.cerrarTodo()
+                actual.pool.shutdown()
+            }
+            val cfg = crearConfig().also { configVigente = it }
+            NotificacionSesion.publicarPrimerPlano(this@NucleoVpnService, cfg.notificacion, this@NucleoVpnService.javaClass)
+            if (ejecucion == null && !arrancando) arrancar(cfg)
+        }
+    }
+
     private fun terminar() {
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -333,7 +358,7 @@ abstract class NucleoVpnService : VpnService() {
             val respuesta = DnsParser.construirBloqueo(consulta, cfg.respuestaBloqueo)
             escribirTunel(ej, Paquetes.construirUdp(IP_DNS_INT, origenIp, 53, puertoOrigen, respuesta))
             if (obs != null) {
-                obs.alBloqueo(q.nombre)
+                obs.alBloqueoDe(q.nombre, "dns", if (uid >= 0) nombreApp(uid) else "desconocida")
                 if (detalle) {
                     obs.alDns(
                         EventoDns(
@@ -484,7 +509,7 @@ abstract class NucleoVpnService : VpnService() {
             grabando = { obs != null && obs.quiereDetalle && cfg.grabando() },
             alEvento = { evento -> obs?.alConexion(evento) },
             alDns = { uid, aplicacion, consulta, respuesta -> registrarDnsExterno(ej, uid, aplicacion, consulta, respuesta) },
-            alBloqueo = { dominio -> obs?.alBloqueo(dominio) },
+            alBloqueo = { dominio, capa, app -> obs?.alBloqueoDe(dominio, capa, app) },
             alFallar = { motivo -> alFallarReenvio(ej, motivo) },
             desvioTcp = cfg.desvioTcp
         )
