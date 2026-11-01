@@ -64,6 +64,7 @@ object Conexiones {
             if (f.primero == 0L) f.primero = e.ts
             f.ultimo = e.ts
         }
+        Diagnostico.anotar("conexion", e.proto + " ↓" + fmtBytes(f.bin) + " ↑" + fmtBytes(f.bout), e.app, destino)
         synchronized(recientes) {
             if (recientes.size >= MAX_RECIENTES) recientes.removeFirst()
             recientes.addLast(Reg(e.ts, e.app, e.proto, destino, e.bytesIn, e.bytesOut))
@@ -198,7 +199,7 @@ object Informe {
     fun mascara(texto: String): String =
         texto.replace(consulta, "?…").replace(ruta) { it.groupValues[1] + "/…" }.replace(largos, "#")
 
-    fun generar(c: Context, ultimas: Int, privado: Boolean): String {
+    fun generar(c: Context, ultimas: Int, privado: Boolean, filtro: Diagnostico.Filtro = Diagnostico.Filtro()): String {
         val sb = StringBuilder()
         val ahora = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
         sb.append("AntiAds · informe de diagnóstico · ").append(ahora).append(if (privado) " · PRIVADO (URLs recortadas)" else "").append('\n')
@@ -247,16 +248,26 @@ object Informe {
         sb.append("── Veces que actuó cada técnica ──\n")
         sb.append(listOf("clasico", "juguete", "vast", "stubs", "yt", "skip", "css", "hls").joinToString(", ") { it + "=" + Laboratorio.veces(it) }).append("\n\n")
 
+        // ---- Categorías y bloqueos
+        val cats = Diagnostico.contarPorCategoria()
+        sb.append("── Eventos por categoría ──\n")
+        sb.append(Diagnostico.CATEGORIAS.joinToString(" · ") { it.second + " " + (cats[it.first] ?: 0) }).append("\n\n")
+        sb.append("── Bloqueados por dominio (top 15; capa: dns, sni, proxy o ip) ──\n")
+        val top = Diagnostico.topBloqueos(15)
+        if (top.isEmpty()) sb.append("(ninguno todavía)\n")
+        for ((dom, capa, n) in top) sb.append(dom).append("  ×").append(n).append("  [").append(capa).append("]\n")
+        sb.append('\n')
+
         // ---- Conexiones y páginas
         sb.append(Conexiones.resumen()).append('\n')
         sb.append(Paginas.resumen()).append('\n')
 
-        // ---- Cronología
-        val cron = Diagnostico.texto(ultimas)
-        sb.append("── Línea de tiempo (últimas ").append(ultimas).append(") ──\n")
+        // ---- Registro (respeta los filtros de la pantalla)
+        val lineasLog = Diagnostico.lineas(filtro, ultimas, false)
+        sb.append("── Registro (últimas ").append(lineasLog.size).append(" de ").append(Diagnostico.cuantas(filtro))
+            .append(") · filtros: ").append(filtro.descripcion()).append(" ──\n")
+        val cron = lineasLog.joinToString("\n")
         sb.append(if (privado) mascara(cron) else cron).append('\n')
-        val con = Conexiones.ultimas(maxOf(40, ultimas / 5))
-        if (con.isNotEmpty()) sb.append('\n').append(if (privado) mascara(con) else con)
         return sb.toString()
     }
 }
