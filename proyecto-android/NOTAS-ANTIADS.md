@@ -50,3 +50,10 @@ Solo puede haber una VPN activa: desactiva el Soberano+ antes de usar AntiAds.
 ## Reorganización de pantallas
 - **Ajustes › Laboratorio** (plegable): paneles «Técnicas» y «Reglas por sitio», también plegables. Es lo que CAMBIA lo que ve la web.
 - **Diagnóstico** (pantalla principal, donde estaba «Laboratorio»): paneles «Estado», «Capturas» y «Registro e informe». Es lo que OBSERVA. Las casillas de captura (conexiones, peticiones, todas, página, informe privado) viven aquí.
+
+## Diagnóstico unificado y botón de la notificación
+- **Un único registro** (Registro.kt › Diagnostico): hora, categoría/subtipo, app, dominio, texto y gravedad. Categorías: bloqueos (dns, sni, proxy, ip), respuestas inventadas, páginas, peticiones, conexiones, DNS por app, certificado, sistema, errores. Los repetidos (bloqueos, conexiones, DNS) se agrupan por app+dominio con «×n». Solo en memoria.
+- **Siempre registrado (barato):** bloqueos por DNS/SNI/proxy, errores, avisos de certificado, eventos del sistema (VPN, listas, cambios de modo). **Opt-in (30 min):** conexiones de todas las apps, peticiones, telemetría de página, DNS por app.
+- **Filtros** en la pantalla Diagnóstico: categorías, gravedad, periodo, app y texto. El informe (copiar/compartir/guardar) respeta los filtros y añade «Bloqueados por dominio» y «Eventos por categoría».
+- Núcleo: `ObservadorTrafico.alBloqueoDe(dominio, capa, app)` (por defecto llama a `alBloqueo`) y `NucleoVpnService.reconfigurar()` (reabre el túnel con la configuración nueva sin parar el servicio).
+- **Notificación:** segundo botón «Activar/Apagar profundo» (`NotificacionSesion.Datos.textoExtra/accionExtra`); cambia el ajuste y reconfigura el túnel. La app de la conexión llega a los eventos del proxy mediante un ThreadLocal fijado en `alAbrirConexion`.
