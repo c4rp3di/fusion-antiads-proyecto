@@ -46,3 +46,7 @@ Solo puede haber una VPN activa: desactiva el Soberano+ antes de usar AntiAds.
 - **Telemetría de página**: script que cuenta errores JS, recursos fallidos, bloqueos de CSP, eventos del vídeo y recursos servidos desde la caché; envía un aviso cada ≥3 s a /__antiads/t del propio sitio, que el proxy intercepta (no sale a internet).
 - **Informe**: entorno, avisos, conteo corregido (yt/skip/stubs), resumen por app, resumen por página y línea de tiempo con 200/450/1000/2500 líneas, o guardado en archivo. «Informe privado» (activado por defecto) recorta URLs.
 - **Consumo**: las capturas son opt-in y se apagan solas a los 30 min; todo en memoria; sin escritura en disco salvo «Guardar informe»; los saltadores de JS ya no trabajan con la pestaña oculta y van a 500 ms / 1 s.
+
+## Reorganización de pantallas
+- **Ajustes › Laboratorio** (plegable): paneles «Técnicas» y «Reglas por sitio», también plegables. Es lo que CAMBIA lo que ve la web.
+- **Diagnóstico** (pantalla principal, donde estaba «Laboratorio»): paneles «Estado», «Capturas» y «Registro e informe». Es lo que OBSERVA. Las casillas de captura (conexiones, peticiones, todas, página, informe privado) viven aquí.
