@@ -27,12 +27,25 @@ object ObservadorAdBlock : ObservadorTrafico {
     override val quiereDetalle: Boolean get() = RegistroDns.activo || Laboratorio.activaCache("conexiones")
 
     override fun alDns(evento: com.vigia.core.red.EventoDns) {
-        if (RegistroDns.activo) RegistroDns.registrar(evento)
+        if (RegistroDns.activo) {
+            RegistroDns.registrar(evento)
+            Diagnostico.anotar("consulta", (if (evento.bloqueado) "✕ " else "✓ ") + evento.tipo, evento.app, evento.dominio)
+        }
         if (Laboratorio.activaCache("conexiones")) NombreIp.aprender(evento.respuesta, evento.dominio)
     }
 
     override fun alConexion(evento: com.vigia.core.red.EventoRed) {
-        if (Laboratorio.activaCache("conexiones")) Conexiones.registrar(evento)
+        if (evento.proto.contains("bloqueada")) {
+            Diagnostico.anotar("ip", evento.proto, evento.app, (if (evento.sni.isNotEmpty()) evento.sni else evento.ip) + ":" + evento.puerto)
+        } else if (Laboratorio.activaCache("conexiones")) {
+            Conexiones.registrar(evento)
+        }
+    }
+
+    /** Bloqueo por DNS o SNI: cuenta para las estadísticas y queda en el registro (agrupado por app y dominio). */
+    override fun alBloqueoDe(dominio: String, capa: String, app: String) {
+        Estadisticas.registrar(dominio)
+        Diagnostico.anotar(capa, "bloqueado", if (app == "desconocida") "" else app, dominio)
     }
 
     override fun alBloqueo(dominio: String) {
@@ -45,6 +58,11 @@ object ObservadorAdBlock : ObservadorTrafico {
  * qué observador (contador en memoria, sin base de datos) y cómo se ve la notificación.
  */
 class AdBlockVpnService : NucleoVpnService() {
+    companion object {
+        /** Botón «Activar/Apagar profundo» de la notificación. */
+        const val ACCION_MITM = "com.vigia.antiads.MITM"
+    }
+
 
     private val ambito = Hilos.nuevoAmbito(Dispatchers.Default)
     private var ticker: Job? = null
@@ -66,6 +84,11 @@ class AdBlockVpnService : NucleoVpnService() {
         RegistroDns.activo = Ajustes.registroDns(c)
         for (id in Laboratorio.DIAGNOSTICO) Laboratorio.activa(c, id) // lee los valores guardados antes de que haga falta
         AdBlockEstado.filtro.bloquearDnsCifrado = Ajustes.bloquearDnsCifrado(c)
+        Diagnostico.anotar(
+            "sistema",
+            "VPN configurada · Modo Profundo " + (if (mitm) "ACTIVO" else "apagado") + " · IPv6 " + (if (mitm) "oculto" else "visible") +
+                " · DNS cifrado " + (if (Ajustes.bloquearDnsCifrado(c)) "bloqueado" else "permitido")
+        )
         MitmEstado.reiniciar()
         MitmEstado.activo = mitm
         AdBlockEstado.filtro.ocultarIpv6 = mitm
@@ -114,9 +137,19 @@ class AdBlockVpnService : NucleoVpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Botón «profundo» de la notificación: cambia el ajuste y vuelve a abrir el túnel, sin parar el servicio.
+        if (intent != null && ACCION_MITM == intent.action) {
+            val c = applicationContext
+            val nuevo = !Ajustes.mitmActivo(c)
+            Ajustes.setMitmActivo(c, nuevo)
+            Diagnostico.anotar("sistema", "Modo Profundo " + (if (nuevo) "activado" else "apagado") + " desde la notificación")
+            reconfigurar()
+            return START_STICKY
+        }
         // «Desactivar» en la notificación es una orden del usuario: no se reactivará solo al arrancar el móvil.
         if (intent != null && NotificacionSesion.ACCION_DETENER == intent.action) {
             Ajustes.setActiva(applicationContext, false)
+            Diagnostico.anotar("sistema", "VPN detenida desde la notificación")
         }
         return super.onStartCommand(intent, flags, startId)
     }
@@ -129,6 +162,7 @@ class AdBlockVpnService : NucleoVpnService() {
     }
 
     override fun onDestroy() {
+        Diagnostico.anotar("sistema", "VPN detenida")
         ticker?.cancel()
         ambito.cancel()
         proxy?.detener()
@@ -156,7 +190,13 @@ class AdBlockVpnService : NucleoVpnService() {
 
     private fun datosNotificacion(): NotificacionSesion.Datos {
         val hoy = Estadisticas.hoy()
-        val texto = if (hoy == 0L) "Protección activa" else NumberFormat.getIntegerInstance().format(hoy) + " anuncios bloqueados hoy"
+        val deseado = Ajustes.mitmActivo(applicationContext)
+        val sufijo = when {
+            MitmEstado.activo -> " · Modo profundo"
+            deseado -> " · Profundo: falta el certificado"
+            else -> ""
+        }
+        val texto = (if (hoy == 0L) "Protección activa" else NumberFormat.getIntegerInstance().format(hoy) + " anuncios bloqueados hoy") + sufijo
         return NotificacionSesion.Datos(
             canalId = "adblock_proteccion",
             canalNombre = "Protección AdBlock",
@@ -164,7 +204,9 @@ class AdBlockVpnService : NucleoVpnService() {
             titulo = "AntiAds",
             texto = texto,
             actividad = MainActivity::class.java,
-            textoDetener = "Desactivar"
+            textoDetener = "Desactivar",
+            textoExtra = if (deseado) "Apagar profundo" else "Activar profundo",
+            accionExtra = ACCION_MITM
         )
     }
 }
