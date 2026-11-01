@@ -110,6 +110,11 @@ object ListasManager {
             if (activas.isEmpty() || err < activas.size) Ajustes.setUltimaActualizacion(app, System.currentTimeMillis())
             estado.value = if (err == 0) "Listas al día · " + dominios + " dominios"
             else "Actualizado con " + err + " error(es): " + mensajes.joinToString("; ")
+            Diagnostico.anotar(
+                "listas",
+                "actualizadas: " + dominios + " dominios, " + err + " errores" + (if (mensajes.isNotEmpty()) " · " + mensajes.joinToString("; ") else ""),
+                grav = if (err > 0) Diagnostico.AVISO else Diagnostico.INFO
+            )
             Resumen(activas.size, ok, igual, err, dominios, mensajes)
         } finally {
             actualizando.value = false
