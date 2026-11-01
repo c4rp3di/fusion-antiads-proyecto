@@ -31,6 +31,21 @@ class AjustesActivity : ActividadBase() {
     private var pendienteListas = false
 
     // Exportar la CA: el sistema de archivos del móvil la guarda donde elija el usuario (no hace falta ningún permiso).
+    // Reglas del laboratorio: archivo JSON elegido por el usuario. Si no es válido, no se guarda.
+    private val importarReglas = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        try {
+            val texto = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } ?: ""
+            Reglas.parse(texto)
+            Reglas.archivo(this).writeText(texto)
+            ReglasEstado.recargar(this)
+            Toast.makeText(this, "Reglas importadas", Toast.LENGTH_SHORT).show()
+            Diagnostico.anotar("reglas", "importadas desde archivo")
+        } catch (e: Exception) {
+            Dialogos.informar(this, "Reglas no válidas", e.message ?: e.javaClass.simpleName)
+        }
+    }
+
     private val guardarCa = registerForActivityResult(ActivityResultContracts.CreateDocument("application/x-x509-ca-cert")) { uri ->
         if (uri == null) return@registerForActivityResult
         try {
@@ -148,6 +163,7 @@ class AjustesActivity : ActividadBase() {
 
         // --- Modo Profundo (MitM)
         construirMitm(raiz)
+        construirLaboratorio(raiz)
 
         // --- Sistema
         val s = seccion(raiz, "Sistema")
@@ -166,6 +182,22 @@ class AjustesActivity : ActividadBase() {
         val scroll = ScrollView(this)
         scroll.addView(raiz)
         setContentView(scroll)
+    }
+
+    // ------------------------------------------------------------------ Laboratorio
+
+    private fun construirLaboratorio(raiz: LinearLayout) {
+        val l = seccion(raiz, "Laboratorio")
+        l.addView(
+            Vistas.texto(
+                this,
+                "Técnicas experimentales contra anuncios de vídeo. Cambian lo que ve la web; necesitan el Modo Profundo con el " +
+                    "certificado instalado y un navegador que lo acepte (Chrome). Para ver qué hacen, usa «Diagnóstico» en la pantalla principal.",
+                true
+            ), Vistas.anchoCompleto(this, 8)
+        )
+        PanelesLab.tecnicas(this, Paneles.plegable(this, l, "lab/tecnicas", "Técnicas", false))
+        PanelesLab.reglas(this, Paneles.plegable(this, l, "lab/reglas", "Reglas por sitio", false)) { importarReglas.launch(arrayOf("*/*")) }
     }
 
     // ------------------------------------------------------------------ Modo Profundo (MitM)
