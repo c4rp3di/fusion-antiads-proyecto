@@ -115,7 +115,7 @@ class MainActivity : ActividadBase() {
         textoProgreso = Vistas.texto(this, "", true)
         raiz.addView(textoProgreso, Vistas.anchoCompleto(this, 12))
         raiz.addView(
-            Vistas.boton(this, "Laboratorio", TipoBoton.TONAL) { startActivity(Intent(this, LaboratorioActivity::class.java)) },
+            Vistas.boton(this, "Diagnóstico", TipoBoton.TONAL) { startActivity(Intent(this, DiagnosticoActivity::class.java)) },
             Vistas.anchoCompleto(this, 8)
         )
         raiz.addView(
