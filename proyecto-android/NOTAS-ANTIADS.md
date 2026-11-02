@@ -57,3 +57,12 @@ Solo puede haber una VPN activa: desactiva el Soberano+ antes de usar AntiAds.
 - **Filtros** en la pantalla Diagnóstico: categorías, gravedad, periodo, app y texto. El informe (copiar/compartir/guardar) respeta los filtros y añade «Bloqueados por dominio» y «Eventos por categoría».
 - Núcleo: `ObservadorTrafico.alBloqueoDe(dominio, capa, app)` (por defecto llama a `alBloqueo`) y `NucleoVpnService.reconfigurar()` (reabre el túnel con la configuración nueva sin parar el servicio).
 - **Notificación:** segundo botón «Activar/Apagar profundo» (`NotificacionSesion.Datos.textoExtra/accionExtra`); cambia el ajuste y reconfigura el túnel. La app de la conexión llega a los eventos del proxy mediante un ThreadLocal fijado en `alAbrirConexion`.
+
+## Diagnóstico: más intuitivo y con más información
+- **Líneas tocables** con iconos por categoría, colores por gravedad (rojo error, ámbar aviso) y nombres claros («bloqueado (DNS)», «anuncio de juguete»…). Al tocar: detalle y acciones (bloquear/permitir dominio, dejar la app sin descifrar, ver ficha, filtrar, copiar).
+- **Filtros rápidos**: Todo · Problemas · Anuncios · Red · Página, además de los filtros finos.
+- **Ficha por app**: descifrado, conexiones, bloqueos, DNS, rastreadores, avisos y errores.
+- **Apps y rastreadores**: ranking por destinos de las listas contactados (mejor con «Todas las conexiones»).
+- **Sesiones de prueba**: iniciar/terminar activa las capturas, resume solo ese rato y permite comparar las dos últimas.
+- **Efectividad de las reglas**: veces que actuó cada patrón de reglas.json (○ = nunca).
+- **Comprobaciones**: VPN, Modo Profundo, certificado, DNS privado estricto, batería, notificaciones, listas y otra VPN activa, con botón para ir a arreglarlo.
