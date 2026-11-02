@@ -90,6 +90,39 @@ object Laboratorio {
     fun reiniciarConteo() = conteo.clear()
 }
 
+/** Cuántas veces ha actuado cada regla de reglas.json (desde que arrancó el proceso; solo en memoria). */
+object EfectividadReglas {
+    private val cuentas = ConcurrentHashMap<String, AtomicInteger>()
+
+    fun contar(tipo: String, patron: String) {
+        cuentas.getOrPut(tipo + "|" + patron) { AtomicInteger() }.incrementAndGet()
+    }
+
+    fun veces(tipo: String, patron: String): Int = cuentas[tipo + "|" + patron]?.get() ?: 0
+
+    fun reiniciar() = cuentas.clear()
+
+    /** Una línea por regla: cuántas veces actuó, y las que nunca actuaron marcadas. */
+    fun texto(r: Reglas?): String {
+        if (r == null) return "(reglas aún sin cargar)"
+        val sb = StringBuilder()
+        fun grupo(titulo: String, tipo: String, patrones: List<String>) {
+            if (patrones.isEmpty()) return
+            sb.append(titulo).append('\n')
+            for (p in patrones) {
+                val n = veces(tipo, p)
+                sb.append("  ").append(if (n == 0) "○ " else "● ").append(p).append("  ×").append(n).append(if (n == 0) "  (nunca actuó)" else "").append('\n')
+            }
+        }
+        grupo("VAST (peticiones de anuncio de vídeo):", "vast", r.vast)
+        grupo("Scripts sustitutos:", "stubs", r.stubs.map { it.first })
+        grupo("Anuncio de juguete (URLs):", "juguete", r.juguete)
+        grupo("Permitir (no bloquear):", "permitir", r.permitir)
+        grupo("Sitios (páginas cargadas con sus técnicas):", "sitio", r.sitios.map { it.first }.filter { it != "*" })
+        return sb.toString().ifEmpty { "(sin reglas)" }
+    }
+}
+
 /** Reglas editables (JSON): patrones de peticiones y técnicas por sitio. */
 class Reglas(
     val vast: List<String>,
@@ -98,6 +131,10 @@ class Reglas(
     val permitir: List<String> = emptyList(),
     val juguete: List<String> = emptyList()
 ) {
+
+    /** El sitio concreto (no «*») de las reglas que encaja con [host], si lo hay. */
+    fun sitioQueEncaja(host: String): String? =
+        sitios.filter { it.first != "*" && (host == it.first || host.endsWith("." + it.first)) }.maxByOrNull { it.first.length }?.first
 
     /** Técnicas de página para [host]: las de «*» más las del sitio que mejor encaje (sufijo de dominio). */
     fun tecnicasPara(host: String): Set<String> {
@@ -182,15 +219,18 @@ class MotorReglas(contexto: Context, private val base: FiltroAdBlock) : FiltroCo
         // Vídeo de anuncio: o está en un dominio de la lista (y es .mp4), o la URL encaja con un patrón de «juguete»
         // de las reglas (anuncios que se sirven desde el mismo dominio que el contenido, como /pre_videos/ de phncdn.com).
         val esVideoDeLista = ruta.substringBefore('?').lowercase().endsWith(".mp4") && base.dominioBloqueado(host)
-        if (tipo != TipoRecurso.DOCUMENTO && Laboratorio.activa(c, "juguete") &&
-            (esVideoDeLista || r.juguete.any { url.contains(it) })
-        ) {
+        val patronJuguete = r.juguete.firstOrNull { url.contains(it) }
+        if (tipo != TipoRecurso.DOCUMENTO && Laboratorio.activa(c, "juguete") && (esVideoDeLista || patronJuguete != null)) {
             val v = juguete
-            if (v != null) return RespuestaFalsa("juguete", "video/mp4", v)
+            if (v != null) {
+                if (patronJuguete != null) EfectividadReglas.contar("juguete", patronJuguete)
+                return RespuestaFalsa("juguete", "video/mp4", v)
+            }
         }
         if (Laboratorio.activa(c, "stubs")) {
             for ((patron, stub) in r.stubs) {
                 if (url.contains(patron)) {
+                    EfectividadReglas.contar("stubs", patron)
                     val js = when (stub) {
                         "gpt" -> LaboratorioJs.STUB_GPT
                         "ima" -> LaboratorioJs.STUB_IMA
@@ -201,7 +241,9 @@ class MotorReglas(contexto: Context, private val base: FiltroAdBlock) : FiltroCo
                 }
             }
         }
-        if (Laboratorio.activa(c, "vast") && r.vast.any { url.contains(it) }) {
+        val patronVast = if (Laboratorio.activa(c, "vast")) r.vast.firstOrNull { url.contains(it) } else null
+        if (patronVast != null) {
+            EfectividadReglas.contar("vast", patronVast)
             val vmap = url.contains("vmap")
             return RespuestaFalsa(
                 if (vmap) "vmap" else "vast", "application/xml; charset=utf-8",
@@ -215,7 +257,9 @@ class MotorReglas(contexto: Context, private val base: FiltroAdBlock) : FiltroCo
         if (!Laboratorio.activa(c, "clasico")) return false
         // Lista «permitir» de las reglas: se deja pasar al servidor real (p. ej. el script que detecta bloqueadores).
         val url = (host + ruta).lowercase()
-        if (reglas().permitir.any { url.contains(it) }) {
+        val patronPermitir = reglas().permitir.firstOrNull { url.contains(it) }
+        if (patronPermitir != null) {
+            EfectividadReglas.contar("permitir", patronPermitir)
             Diagnostico.anotar("permitido", ruta, EventosLab.appActual(), host)
             return false
         }
@@ -231,6 +275,7 @@ class MotorReglas(contexto: Context, private val base: FiltroAdBlock) : FiltroCo
 
     override fun scriptInicial(host: String): String? {
         val t = reglas().tecnicasPara(host)
+        reglas().sitioQueEncaja(host)?.let { EfectividadReglas.contar("sitio", it) }
         val sb = StringBuilder()
         if (Laboratorio.activa(c, "pagina")) sb.append(LaboratorioJs.TELEMETRIA).append('\n')
         if (t.contains("yt") && Laboratorio.activa(c, "yt")) {
