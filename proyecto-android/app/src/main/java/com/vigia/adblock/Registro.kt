@@ -15,10 +15,19 @@ object Diagnostico {
     const val AVISO = 1
     const val ERROR = 2
 
-    class Evento(val ts: Long, val cat: String, val sub: String, val app: String, val dominio: String, var texto: String, val grav: Int) {
+    class Evento(
+        val ts: Long, val cat: String, val sub: String, val app: String, val dominio: String,
+        var texto: String, val grav: Int, val clave: String = ""
+    ) {
         var n = 1
         var ultimo = ts
     }
+
+    /** Copia inmutable de un evento, para pintarla sin que cambie por debajo. [clave] solo existe en los agrupados. */
+    class Snap(
+        val ts: Long, val ultimo: Long, val cat: String, val sub: String, val app: String, val dominio: String,
+        val texto: String, val grav: Int, val n: Int, val clave: String
+    )
 
     /** Filtros de la pantalla y del informe. */
     class Filtro {
@@ -108,7 +117,7 @@ object Diagnostico {
                 e.ultimo = ahora
                 e.texto = t
             } else {
-                agrupados[clave] = Evento(ahora, c.cat, c.sub, app, dominio, t, g)
+                agrupados[clave] = Evento(ahora, c.cat, c.sub, app, dominio, t, g, clave)
             }
         } else {
             if (ring.size >= MAX_RING) ring.removeFirst()
@@ -160,6 +169,34 @@ object Diagnostico {
 
     @Synchronized
     fun cuantas(f: Filtro): Int = filtrados(f).size
+
+    private fun copia(e: Evento) = Snap(e.ts, e.ultimo, e.cat, e.sub, e.app, e.dominio, e.texto, e.grav, e.n, e.clave)
+
+    /** Las últimas [max] instantáneas que pasan el filtro, de más antigua a más reciente. */
+    @Synchronized
+    fun snaps(f: Filtro, max: Int): List<Snap> = filtrados(f).takeLast(max).map { copia(it) }
+
+    /** Veces que ha ocurrido cada «categoría/subtipo». */
+    @Synchronized
+    fun contarPorSub(): Map<String, Int> {
+        val m = HashMap<String, Int>()
+        for (e in ring) m[e.cat + "/" + e.sub] = (m[e.cat + "/" + e.sub] ?: 0) + 1
+        for (e in agrupados.values) m[e.cat + "/" + e.sub] = (m[e.cat + "/" + e.sub] ?: 0) + e.n
+        return m
+    }
+
+    /** Cuenta actual de cada evento agrupado (para medir lo ocurrido desde un momento dado). */
+    @Synchronized
+    fun nPorClave(): Map<String, Int> {
+        val m = HashMap<String, Int>()
+        for (e in agrupados.values) m[e.clave] = e.n
+        return m
+    }
+
+    /** Bloqueos con app conocida: (app, dominio, veces). */
+    @Synchronized
+    fun bloqueosPorApp(): List<Triple<String, String, Int>> =
+        agrupados.values.filter { it.cat == "bloqueo" && it.app.isNotEmpty() }.map { Triple(it.app, it.dominio, it.n) }
 
     /** Compatibilidad: las últimas [ultimas] líneas sin filtrar. */
     @Synchronized
