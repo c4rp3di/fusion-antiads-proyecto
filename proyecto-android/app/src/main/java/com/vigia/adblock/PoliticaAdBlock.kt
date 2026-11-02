@@ -20,6 +20,16 @@ class PoliticaAdBlock(contexto: Context) : PoliticaMitm {
         if (set.removeAll(NAVEGADORES)) Ajustes.setMitmExentas(c, HashSet(set))
     }
 
+    init {
+        actual = this
+    }
+
+    /** Deja una app sin descifrar desde la interfaz (afecta a las conexiones nuevas). */
+    fun agregar(clave: String) {
+        if (NAVEGADORES.contains(clave)) return
+        if (exentas.add(clave)) Ajustes.setMitmExentas(c, HashSet(exentas))
+    }
+
     private fun clave(app: String, ip: String) = if (app == "desconocida" || app.isEmpty()) "ip:" + ip else app
 
     override fun intermediar(app: String, ip: String): Boolean = !exentas.contains(clave(app, ip))
@@ -49,6 +59,10 @@ class PoliticaAdBlock(contexto: Context) : PoliticaMitm {
     }
 
     companion object {
+        /** La política viva del servicio, si está en marcha. */
+        @Volatile
+        var actual: PoliticaAdBlock? = null
+
         val NAVEGADORES = setOf(
             "com.android.chrome", "com.chrome.beta", "com.chrome.dev", "com.chrome.canary",
             "org.mozilla.firefox", "org.mozilla.firefox_beta", "org.mozilla.fenix", "org.mozilla.focus",
