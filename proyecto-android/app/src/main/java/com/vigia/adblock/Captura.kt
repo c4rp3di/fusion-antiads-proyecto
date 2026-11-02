@@ -84,6 +84,10 @@ object Conexiones {
 
     fun hayDatos(): Boolean = mapa.isNotEmpty()
 
+    fun todas(): List<Fila> = mapa.values.toList()
+
+    fun filasDe(app: String): List<Fila> = mapa.values.filter { it.app == app }
+
     fun resumen(): String {
         val filas = mapa.values.toList()
         if (filas.isEmpty()) return "Conexiones: sin datos (activa «Todas las conexiones» y usa alguna app; solo con Modo Profundo).\n"
@@ -111,6 +115,38 @@ object Conexiones {
                 .append("  ↓").append(fmtBytes(r.bin)).append(" ↑").append(fmtBytes(r.bout)).append('\n')
         }
         return sb.toString()
+    }
+}
+
+/**
+ * ¿Qué apps hablan con más destinos de las listas de bloqueo? Se calcula con los bloqueos que tienen app conocida y con las
+ * conexiones registradas. Para que salga bien conviene tener activada la captura «Todas las conexiones».
+ */
+object Rastreadores {
+    class Fila(val app: String, val destinos: Set<String>, val veces: Int)
+
+    fun ranking(): List<Fila> {
+        val destinos = HashMap<String, HashSet<String>>()
+        val veces = HashMap<String, Int>()
+        for ((app, dom, n) in Diagnostico.bloqueosPorApp()) {
+            destinos.getOrPut(app) { HashSet() }.add(dom)
+            veces[app] = (veces[app] ?: 0) + n
+        }
+        for (f in Conexiones.todas()) {
+            val host = f.destino.substringBeforeLast(':')
+            if (AdBlockEstado.filtro.dominioBloqueado(host)) {
+                destinos.getOrPut(f.app) { HashSet() }.add(host)
+                veces[f.app] = (veces[f.app] ?: 0) + f.n
+            }
+        }
+        return destinos.entries.map { Fila(it.key, it.value, veces[it.key] ?: 0) }
+            .sortedWith(compareByDescending<Fila> { it.destinos.size }.thenByDescending { it.veces })
+    }
+
+    fun texto(max: Int): String {
+        val r = ranking().take(max)
+        if (r.isEmpty()) return "(sin datos: activa «Todas las conexiones» en Capturas y usa algunas apps)"
+        return r.joinToString("\n") { it.app + " · " + it.destinos.size + " destinos de seguimiento · " + it.veces + " veces" }
     }
 }
 
@@ -257,6 +293,18 @@ object Informe {
         if (top.isEmpty()) sb.append("(ninguno todavía)\n")
         for ((dom, capa, n) in top) sb.append(dom).append("  ×").append(n).append("  [").append(capa).append("]\n")
         sb.append('\n')
+
+        // ---- Rastreadores, reglas y pruebas
+        sb.append("── Apps y rastreadores (destinos de tus listas contactados) ──\n")
+        sb.append(Rastreadores.texto(10)).append("\n\n")
+        sb.append("── Efectividad de las reglas ──\n")
+        sb.append(EfectividadReglas.texto(ReglasEstado.actual)).append('\n')
+        val pruebas = Sesiones.ultimas()
+        if (pruebas.isNotEmpty()) {
+            sb.append("── Pruebas guardadas (").append(pruebas.size).append(") ──\n")
+            sb.append(Sesiones.texto(pruebas.last())).append('\n')
+            if (pruebas.size >= 2) sb.append(Sesiones.comparar(pruebas[pruebas.size - 2], pruebas.last())).append('\n')
+        }
 
         // ---- Conexiones y páginas
         sb.append(Conexiones.resumen()).append('\n')
