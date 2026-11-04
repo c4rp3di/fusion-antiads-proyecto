@@ -4,9 +4,11 @@ import android.app.Activity
 import android.graphics.Typeface
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.vigia.core.ui.TipoBoton
 import com.vigia.core.ui.Vistas
 
@@ -80,6 +82,88 @@ object PanelesLab {
             Reglas.archivo(a).delete()
             ReglasEstado.recargar(a)
             Toast.makeText(a, "Reglas integradas restauradas", Toast.LENGTH_SHORT).show()
+            a.recreate()
         }, Vistas.anchoCompleto(a, 0))
+    }
+
+    // ------------------------------------------------------------------ editor de sitios
+
+    /** Páginas con técnicas propias (YouTube, saltador, CSS, HLS…). Se guardan en el archivo de reglas. */
+    fun sitios(a: Activity, cont: LinearLayout) {
+        cont.addView(
+            Vistas.texto(
+                a,
+                "Webs a las que se aplican técnicas de página. «*» vale para todas. Toca un sitio para editarlo o quitarlo. " +
+                    "Las de red (VAST, scripts, vídeo de juguete) actúan por URL y no dependen de esta lista.",
+                true
+            ), Vistas.anchoCompleto(a, 8)
+        )
+        val lista = LinearLayout(a)
+        lista.orientation = LinearLayout.VERTICAL
+        cont.addView(lista, Vistas.anchoCompleto(a, 6))
+        pintarSitios(a, lista)
+        cont.addView(Vistas.boton(a, "Añadir sitio", TipoBoton.TONAL) { dialogoNuevoSitio(a, lista) }, Vistas.anchoCompleto(a, 0))
+    }
+
+    private fun pintarSitios(a: Activity, lista: LinearLayout) {
+        lista.removeAllViews()
+        val sitios = EditorSitios.listar(a)
+        if (sitios.isEmpty()) lista.addView(Vistas.texto(a, "(ningún sitio)", true), Vistas.anchoCompleto(a, 6))
+        for (s in sitios) {
+            val resumen = if (s.tecnicas.isEmpty()) "sin técnicas" else s.tecnicas.joinToString(", ")
+            lista.addView(Vistas.boton(a, s.host + " · " + resumen, TipoBoton.TONAL) { menuSitio(a, lista, s) }, Vistas.anchoCompleto(a, 4))
+        }
+    }
+
+    private fun menuSitio(a: Activity, lista: LinearLayout, s: EditorSitios.Sitio) {
+        val acc = ArrayList<Acciones.Accion>()
+        acc.add(Acciones.Accion("Editar técnicas") { dialogoTecnicas(a, lista, s.host, s.tecnicas) })
+        if (s.host != "*") {
+            acc.add(Acciones.Accion("Quitar este sitio") {
+                try {
+                    EditorSitios.borrar(a, s.host)
+                } catch (e: Exception) {
+                    Toast.makeText(a, "No se pudo guardar: " + (e.message ?: ""), Toast.LENGTH_LONG).show()
+                }
+                pintarSitios(a, lista)
+            })
+        }
+        Acciones.dialogo(a, s.host, "Técnicas activas: " + (if (s.tecnicas.isEmpty()) "ninguna" else s.tecnicas.joinToString(", ")), acc)
+    }
+
+    private fun dialogoNuevoSitio(a: Activity, lista: LinearLayout) {
+        val et = EditText(a)
+        et.hint = "dominio, por ejemplo ejemplo.com"
+        MaterialAlertDialogBuilder(a)
+            .setTitle("Añadir sitio")
+            .setView(et)
+            .setPositiveButton("Siguiente") { _, _ ->
+                val host = EditorSitios.normalizar(et.text.toString())
+                if (host == null) Toast.makeText(a, "Escribe un dominio válido, por ejemplo ejemplo.com", Toast.LENGTH_LONG).show()
+                else dialogoTecnicas(a, lista, host, listOf("css"))
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun dialogoTecnicas(a: Activity, lista: LinearLayout, host: String, actuales: List<String>) {
+        val ts = EditorSitios.TECNICAS
+        val nombres = Array<CharSequence>(ts.size) { i -> ts[i].second }
+        val marcados = BooleanArray(ts.size) { i -> actuales.contains(ts[i].first) }
+        MaterialAlertDialogBuilder(a)
+            .setTitle("Técnicas en " + host)
+            .setMultiChoiceItems(nombres, marcados) { _, i, v -> marcados[i] = v }
+            .setPositiveButton("Guardar") { _, _ ->
+                val sel = ArrayList<String>()
+                for (i in ts.indices) if (marcados[i]) sel.add(ts[i].first)
+                try {
+                    EditorSitios.guardar(a, host, sel)
+                } catch (e: Exception) {
+                    Toast.makeText(a, "No se pudo guardar: " + (e.message ?: ""), Toast.LENGTH_LONG).show()
+                }
+                pintarSitios(a, lista)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 }
