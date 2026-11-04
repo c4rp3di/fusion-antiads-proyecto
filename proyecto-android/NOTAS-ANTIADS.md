@@ -57,3 +57,8 @@ Solo puede haber una VPN activa: desactiva el Soberano+ antes de usar AntiAds.
 - **Sesiones de prueba**: iniciar/terminar activa las capturas, resume solo ese rato y permite comparar las dos últimas.
 - **Efectividad de las reglas**: veces que actuó cada patrón de reglas.json (○ = nunca).
 - **Comprobaciones**: VPN, Modo Profundo, certificado, DNS privado estricto, batería, notificaciones, listas y otra VPN activa, con botón para ir a arreglarlo.
+
+## Lote de mantenimiento
+- Caché de certificados con tope (LRU, 400). `CaManager.regenerar()` y botón «Regenerar certificado CA» en Ajustes (con aviso de quitar la antigua de Android).
+- `vigia-mitm/src/test/.../HttpCodecTest.kt`: pruebas de JVM del códec HTTP (no se ejecutan con `assembleDebug`).
+- Ajustes › Laboratorio › Sitios: añadir, editar y quitar sitios sin importar JSON. Guarda una copia editable de las reglas; «Volver a las reglas integradas» la borra.
