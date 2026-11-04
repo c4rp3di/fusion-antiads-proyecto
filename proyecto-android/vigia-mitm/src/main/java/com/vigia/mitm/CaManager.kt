@@ -26,7 +26,6 @@ import java.security.PrivateKey
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.Date
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
@@ -48,7 +47,13 @@ object CaManager {
     private var caKey: PrivateKey? = null
     private var caCert: X509Certificate? = null
     private var claveHoja: KeyPair? = null
-    private val hojas = ConcurrentHashMap<String, Pair<PrivateKey, Array<X509Certificate>>>()
+    private const val MAX_HOJAS = 400
+
+    /** Certificados ya generados, con tope: al llenarse se descarta el que más tiempo lleva sin usarse. */
+    private val hojas = object : LinkedHashMap<String, Pair<PrivateKey, Array<X509Certificate>>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<PrivateKey, Array<X509Certificate>>>?): Boolean =
+            size > MAX_HOJAS
+    }
     private val azar = SecureRandom()
 
     @Synchronized
@@ -88,7 +93,8 @@ object CaManager {
             ks.load(null, null)
             ks.setKeyEntry(CA_ALIAS, kp.private, clave.toCharArray(), arrayOf(cert))
             archivo.outputStream().use { ks.store(it, clave.toCharArray()) }
-            hojas.clear(); claveHoja = null
+            synchronized(hojas) { hojas.clear() }
+            claveHoja = null
         }
     }
 
@@ -127,8 +133,31 @@ object CaManager {
     }
 
     /** Clave + cadena (hoja, CA) para un nombre de servidor (dominio o IP literal). */
-    fun certificadoPara(nombre: String): Pair<PrivateKey, Array<X509Certificate>> =
-        hojas.getOrPut(nombre.lowercase()) { generarHoja(nombre.lowercase()) }
+    fun certificadoPara(nombre: String): Pair<PrivateKey, Array<X509Certificate>> {
+        val k = nombre.lowercase()
+        synchronized(hojas) { hojas[k] }?.let { return it }
+        val nueva = generarHoja(k) // fuera del cerrojo: firmar tarda y no debe bloquear a las demás conexiones
+        synchronized(hojas) { hojas[k] = nueva }
+        return nueva
+    }
+
+    /**
+     * Crea una CA NUEVA y borra la anterior. La vieja deja de servir: hay que quitarla de Android e instalar la nueva.
+     * Úsalo si crees que alguien ha podido copiar la clave.
+     */
+    @Synchronized
+    fun regenerar(contexto: Context) {
+        val c = contexto.applicationContext
+        File(c.filesDir, KS_FILE).delete()
+        caKey = null
+        caCert = null
+        claveHoja = null
+        synchronized(hojas) { hojas.clear() }
+        iniciar(c)
+    }
+
+    /** Cuántos certificados hay en la caché (para el informe). */
+    fun tamanoCache(): Int = synchronized(hojas) { hojas.size }
 
     @Synchronized
     private fun parHoja(): KeyPair = claveHoja ?: nuevoRsa().also { claveHoja = it }
