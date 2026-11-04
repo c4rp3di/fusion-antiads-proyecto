@@ -19,22 +19,13 @@ Solo puede haber una VPN activa: desactiva el Soberano+ antes de usar AntiAds.
 - La app de YouTube no acepta nuestra CA: solo YouTube web en Chrome.
 - Sin probar en dispositivo: los scripts sustitutos y el de YouTube están escritos de memoria sobre cómo se comportan GPT, IMA y el reproductor.
 
-## Hallazgos de la primera prueba (es.pornhub.com en Chrome)
-- Sus anuncios NO usan VAST/IMA/GPT: el reproductor pide los vídeos (.mp4) y las imágenes a adtng.com / trafficjunky.net y envía eventos a etahub.com. Por eso vast/stubs no actuaban.
+## Hallazgos de las primeras pruebas (web de vídeos con publicidad, en Chrome)
+- Sus anuncios NO usan VAST/IMA/GPT: el reproductor pide los vídeos (.mp4) y las imágenes a redes publicitarias externas y envía eventos a un dominio de analítica. Por eso vast/stubs no actuaban.
 - Se añadió la técnica «juguete»: esos .mp4 se sustituyen por un MP4 válido de 0,3 s (assets/anuncio_vacio.mp4).
-
-## Segunda prueba (es.pornhub.com)
-- Los scripts de anuncios (embeddedads, popunder, gtm) quedan vaciados desde el origen: no llegan a pedirse los .mp4 (por eso «juguete» = 0).
-- `media.trafficjunky.net/delivery/js/abp/js1.js` parece un detector de bloqueadores (abp). Hipótesis: al vaciarlo, el sitio detecta bloqueo y no reproduce. Se añade la clave `permitir` en reglas.json: esa URL ya no se bloquea.
-- Los eventos de etahub.com se repetían (mismo ndate): la respuesta vacía no llevaba cabeceras CORS y el emisor la tomaba por fallo. Ahora el bloqueo clásico responde con CORS y atiende el preflight.
-
-## Tercera prueba: el pre-roll seguía saliendo
-- El diagnóstico solo anotaba lo que las técnicas modificaban; no se veía qué peticiones pasaban sin tocar. Nuevo interruptor del Laboratorio: «Registrar vídeo y audio (diagnóstico)», que anota (req) las peticiones de vídeo/audio/HLS/archivos grandes con código, tipo y tamaño.
-- El túnel solo enruta IPv4. Con el Modo Profundo activo, las consultas DNS de tipo AAAA se contestan «sin datos» (FiltroTrafico.filtrarAaaa) para que las apps usen IPv4 y pasen por el proxy.
-
-## Cuarta prueba: de dónde sale el pre-roll de Pornhub
-- Con «Registrar vídeo y audio» se vio: `evtubescms.phncdn.com/pre_videos/…/mp4_720.mp4` (206, 3,3 MB). El pre-roll lo sirve la propia CDN de Pornhub, así que ninguna lista de dominios lo cubre (y bloquear phncdn.com rompería el vídeo principal, que va por HLS en em-h.phncdn.com).
-- Nueva clave `juguete` en reglas.json: URLs que se sustituyen por el MP4 válido de 0,3 s. Por defecto: `phncdn.com/pre_videos/`.
+- Una ruta con «abp» (`/delivery/js/abp`) parece un detector de bloqueadores. Hipótesis: al vaciarlo, el sitio detecta bloqueo y no reproduce. Por eso existe la clave `permitir` en reglas.json: esas URLs no se bloquean.
+- Los eventos de analítica se repetían (mismo sello de tiempo): la respuesta vacía no llevaba cabeceras CORS y el emisor la tomaba por fallo. Ahora el bloqueo clásico responde con CORS y atiende el preflight.
+- Con «Registrar vídeo y audio» se vio que el pre-roll lo sirve la propia CDN de la web, bajo la ruta `/pre_videos/`, así que ninguna lista de dominios lo cubre (y bloquear ese dominio rompería el vídeo principal, que va por HLS).
+- Nueva clave `juguete` en reglas.json: URLs que se sustituyen por el MP4 válido de 0,3 s. Por defecto: `/pre_videos/`.
 - Los vídeos inventados atienden Range (206/416), porque el navegador pide «bytes=0-».
 
 ## Quinta prueba: el pre-roll seguía y no había petición
