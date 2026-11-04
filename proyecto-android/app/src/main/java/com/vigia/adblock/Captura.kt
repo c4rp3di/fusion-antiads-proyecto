@@ -251,7 +251,7 @@ object Informe {
             .append(" · QUIC bloqueado: ").append(if (profundo) "sí" else "no")
             .append(" · DNS cifrado bloqueado: ").append(if (Ajustes.bloquearDnsCifrado(c)) "sí" else "no").append('\n')
         val r = ReglasEstado.actual
-        sb.append("Reglas: ").append(if (Reglas.archivo(c).exists()) "importadas" else "integradas")
+        sb.append("Reglas: ").append(if (Reglas.archivo(c).exists()) "personalizadas (importadas o editadas)" else "integradas")
         if (r != null) sb.append(" (sitios ").append(r.sitios.size).append(", vast ").append(r.vast.size).append(", stubs ").append(r.stubs.size)
             .append(", permitir ").append(r.permitir.size).append(", juguete ").append(r.juguete.size).append(')')
         sb.append('\n')
