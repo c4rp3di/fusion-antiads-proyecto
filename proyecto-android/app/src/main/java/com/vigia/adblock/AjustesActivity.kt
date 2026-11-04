@@ -41,6 +41,7 @@ class AjustesActivity : ActividadBase() {
             ReglasEstado.recargar(this)
             Toast.makeText(this, "Reglas importadas", Toast.LENGTH_SHORT).show()
             Diagnostico.anotar("reglas", "importadas desde archivo")
+            recreate()
         } catch (e: Exception) {
             Dialogos.informar(this, "Reglas no válidas", e.message ?: e.javaClass.simpleName)
         }
@@ -197,7 +198,8 @@ class AjustesActivity : ActividadBase() {
             ), Vistas.anchoCompleto(this, 8)
         )
         PanelesLab.tecnicas(this, Paneles.plegable(this, l, "lab/tecnicas", "Técnicas", false))
-        PanelesLab.reglas(this, Paneles.plegable(this, l, "lab/reglas", "Reglas por sitio", false)) { importarReglas.launch(arrayOf("*/*")) }
+        PanelesLab.sitios(this, Paneles.plegable(this, l, "lab/sitios", "Sitios", false))
+        PanelesLab.reglas(this, Paneles.plegable(this, l, "lab/reglas", "Archivo de reglas", false)) { importarReglas.launch(arrayOf("*/*")) }
     }
 
     // ------------------------------------------------------------------ Modo Profundo (MitM)
@@ -209,7 +211,8 @@ class AjustesActivity : ActividadBase() {
                 this,
                 "Descifra localmente el tráfico HTTPS (443) para ocultar los huecos de anuncios y vaciar scripts e imágenes " +
                     "bloqueados sin romper la web. Necesita instalar el certificado CA de esta app. Las apps que lo rechazan " +
-                    "(SSL pinning) se dejan sin descifrar automáticamente. Apagado = bloqueo DNS/SNI normal.",
+                    "(SSL pinning) se dejan sin descifrar automáticamente. Apagado = bloqueo DNS/SNI normal. " +
+                    "Si desinstalas la app, quita también el certificado (Ajustes de Android › Seguridad › Credenciales de usuario).",
                 true
             ), Vistas.anchoCompleto(this, 8)
         )
@@ -226,6 +229,7 @@ class AjustesActivity : ActividadBase() {
         m.addView(Vistas.boton(this, "Exportar certificado CA (.crt)", TipoBoton.TONAL) {
             conCa { guardarCa.launch("AntiAds-CA.crt") }
         }, Vistas.anchoCompleto(this, 8))
+        m.addView(Vistas.boton(this, "Regenerar certificado CA", TipoBoton.TONAL) { regenerarCa() }, Vistas.anchoCompleto(this, 8))
         m.addView(Vistas.boton(this, "Abrir ajustes de seguridad de Android", TipoBoton.TONAL) {
             try {
                 startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
@@ -274,6 +278,32 @@ class AjustesActivity : ActividadBase() {
                 reiniciarSiActiva()
                 recreate()
             }
+        }
+    }
+
+    /** Crea una CA nueva (la anterior deja de servir). Tarda un momento: se hace fuera del hilo principal. */
+    private fun regenerarCa() {
+        Dialogos.confirmar(
+            this, "Regenerar el certificado",
+            "Se crea una CA NUEVA y la anterior deja de servir. Después hay que quitar la antigua de Android (Ajustes › Seguridad › " +
+                "Credenciales de usuario) e instalar la nueva con «Exportar certificado CA». Hasta entonces el Modo Profundo no funcionará " +
+                "y se usará el bloqueo DNS. Hazlo si crees que alguien ha podido copiar la clave.",
+            "Regenerar"
+        ) {
+            Thread {
+                try {
+                    CaManager.regenerar(this)
+                    runOnUiThread {
+                        if (!isFinishing) {
+                            Toast.makeText(this, "Certificado nuevo creado: exporta e instala el nuevo", Toast.LENGTH_LONG).show()
+                            reiniciarSiActiva()
+                            recreate()
+                        }
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread { if (!isFinishing) Dialogos.informar(this, "No se pudo regenerar", e.message ?: e.javaClass.simpleName) }
+                }
+            }.start()
         }
     }
 
