@@ -25,6 +25,6 @@ Ideas guardadas para más adelante. Nada de esto está hecho todavía.
   - **VAST vacío válido** como respuesta a las peticiones de anuncios de vídeo, en vez de 0 bytes.
   - **Inyección de scripts** (scriptlets) al principio de la página, ajustando la CSP como ya se hace con el CSS.
   - **Reglas por sitio en un archivo actualizable** (qué vaciar, qué inyectar), sin recompilar.
-  - Primer caso: YouTube en el navegador (el script que borra `adPlacements`/`playerAds` de la respuesta del reproductor; frágil, YouTube cambia a menudo). Segundo: webs de adultos.
-  - **Dato de prueba (usuario):** en webs de adultos, si se bloquean los dominios de anuncios el vídeo no carga. El reproductor espera la respuesta del anuncio y, si falla, se queda parado. Por eso hace falta responder con un «no hay anuncio» válido y no cortar.
+  - Primer caso: YouTube en el navegador (el script que borra `adPlacements`/`playerAds` de la respuesta del reproductor; frágil, YouTube cambia a menudo). Segundo: otras webs con vídeos con publicidad.
+  - **Dato de prueba (usuario):** en webs con vídeos con publicidad, si se bloquean los dominios de anuncios el vídeo no carga. El reproductor espera la respuesta del anuncio y, si falla, se queda parado. Por eso hace falta responder con un «no hay anuncio» válido y no cortar.
   - Limitaciones conocidas: la app de YouTube no acepta nuestra CA; los anuncios metidos en el propio flujo de vídeo (SSAI) no se pueden quitar así.
