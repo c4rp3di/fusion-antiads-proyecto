@@ -217,7 +217,7 @@ class MotorReglas(contexto: Context, private val base: FiltroAdBlock) : FiltroCo
         Laboratorio.activa(c, "peticiones") // solo para que el valor esté leído cuando lo mire EventosLab
         Laboratorio.activa(c, "todas")
         // Vídeo de anuncio: o está en un dominio de la lista (y es .mp4), o la URL encaja con un patrón de «juguete»
-        // de las reglas (anuncios que se sirven desde el mismo dominio que el contenido, como /pre_videos/ de phncdn.com).
+        // de las reglas (anuncios que se sirven desde el mismo dominio que el contenido, como la ruta /pre_videos/).
         val esVideoDeLista = ruta.substringBefore('?').lowercase().endsWith(".mp4") && base.dominioBloqueado(host)
         val patronJuguete = r.juguete.firstOrNull { url.contains(it) }
         if (tipo != TipoRecurso.DOCUMENTO && Laboratorio.activa(c, "juguete") && (esVideoDeLista || patronJuguete != null)) {
