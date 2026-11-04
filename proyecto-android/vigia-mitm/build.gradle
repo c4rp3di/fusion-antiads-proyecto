@@ -27,4 +27,7 @@ dependencies {
     // Generación de certificados X.509 (CA y hojas). Solo viven aquí.
     implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
     implementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+
+    // Pruebas de JVM (HttpCodec no depende de Android): ./gradlew :vigia-mitm:testDebugUnitTest
+    testImplementation 'junit:junit:4.13.2'
 }
