@@ -9,8 +9,17 @@ import com.vigia.mitm.TipoRecurso
  * Filtro en modo MitM. El DNS NO bloquea (si bloqueara, la petición no llegaría nunca al proxy y no habría 200 vacío);
  * el bloqueo lo hace el proxy por host + ruta. El resto del comportamiento (SNI de apps exentas) es el del 1.0.
  */
-class FiltroProfundo(private val base: FiltroTrafico) : FiltroTrafico by base {
+class FiltroProfundo(
+    private val base: FiltroTrafico,
+    /** Apps excluidas con bloqueo básico: para ellas el DNS SÍ bloquea (no pasan por el proxy, no habría 200 vacío). */
+    private val basicas: () -> Set<String> = { emptySet() }
+) : FiltroTrafico by base {
     override fun dominioBloqueadoEnDns(nombre: String): Boolean = false
+
+    override val necesitaAppEnDns: Boolean get() = basicas().isNotEmpty()
+
+    override fun dominioBloqueadoEnDnsDe(nombre: String, app: String): Boolean =
+        basicas().contains(app) && base.dominioBloqueadoEnDns(nombre)
 }
 
 class FiltroContenidoAdBlock(private val base: FiltroAdBlock) : FiltroContenido {
