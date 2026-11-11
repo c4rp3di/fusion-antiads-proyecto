@@ -23,6 +23,15 @@ interface FiltroTrafico {
     fun dominioBloqueadoEnDns(nombre: String): Boolean = dominioBloqueado(nombre)
 
     /**
+     * Si es verdadero, el núcleo averigua la app de cada consulta DNS (una llamada al sistema por consulta, solo Android 10+)
+     * y consulta [dominioBloqueadoEnDnsDe] en lugar de [dominioBloqueadoEnDns]. Por defecto no se averigua nada.
+     */
+    val necesitaAppEnDns: Boolean get() = false
+
+    /** Como [dominioBloqueadoEnDns], sabiendo la app de origen («desconocida» si no se pudo resolver). */
+    fun dominioBloqueadoEnDnsDe(nombre: String, app: String): Boolean = dominioBloqueadoEnDns(nombre)
+
+    /**
      * Bloqueo por IP + puerto de destino (TCP y UDP). Por defecto nunca bloquea, así que el AdBlock 1.0 no cambia.
      * Solo ve el tráfico que entra en el túnel: en modo DNS (solo se enruta el DNS) no se llega a llamar.
      */
