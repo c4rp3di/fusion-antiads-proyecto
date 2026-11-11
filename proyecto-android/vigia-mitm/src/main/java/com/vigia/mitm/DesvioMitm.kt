@@ -19,7 +19,8 @@ class DesvioMitm(
     override fun desviar(uid: Int, app: String, ip: String, puerto: Int, puertoLocal: Int): InetSocketAddress? {
         val esperado = puerto == 443 || (incluirHttp && puerto == 80)
         if (!esperado || !proxy.activo || puertoLocal <= 0) return null
-        if (!politica.intermediar(app, ip)) return null
+        val permitido = if (puerto == 80) politica.intermediarHttp(app, ip) else politica.intermediar(app, ip)
+        if (!permitido) return null
         Origenes.registrar(puertoLocal, Origen(ip, puerto, app))
         return InetSocketAddress(loopback, proxy.puerto)
     }
