@@ -326,7 +326,7 @@ object EventosLab : EventosMitm {
     override fun alBloquear(host: String, ruta: String, tipo: TipoRecurso) {
         MitmEstado.vaciados.incrementAndGet()
         Laboratorio.contar("clasico")
-        Estadisticas.registrar(host)
+        Estadisticas.registrar(host, "proxy", app())
         Diagnostico.anotar("clasico", ruta, app(), host)
     }
 
