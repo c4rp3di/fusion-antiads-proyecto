@@ -71,6 +71,12 @@ class AdBlockVpnService : NucleoVpnService() {
     private var proxy: MitmProxy? = null
     private var politica: PoliticaAdBlock? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        // Mantiene al día el tile de ajustes rápidos cuando el estado cambia (botón de la app, notificación, fallo...).
+        ambito.launch { VpnEstado.activa.collect { AdBlockTileService.pedirActualizacion(applicationContext) } }
+    }
+
     override fun crearConfig(): ConfigVpn {
         val c = applicationContext
         Estadisticas.iniciar(c)
@@ -170,6 +176,8 @@ class AdBlockVpnService : NucleoVpnService() {
         MitmEstado.activo = false
         Estadisticas.guardar(applicationContext)
         super.onDestroy()
+        // super.onDestroy() deja VpnEstado.activa en false; el observador ya está cancelado, así que se avisa al tile aquí.
+        AdBlockTileService.pedirActualizacion(applicationContext)
     }
 
     private fun iniciarTicker() {
