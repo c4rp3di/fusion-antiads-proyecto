@@ -45,6 +45,10 @@
             android:name=".DiagnosticoActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".EstadisticasActivity"
+            android:exported="false" />
+
         <!-- Anfitriona invisible del diálogo de permiso de VPN cuando se pulsa el tile por primera vez. -->
         <activity
             android:name=".TileVpnActivity"
