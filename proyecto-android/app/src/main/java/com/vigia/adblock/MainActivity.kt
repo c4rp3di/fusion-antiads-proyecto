@@ -107,7 +107,11 @@ class MainActivity : ActividadBase() {
         top.addView(Vistas.texto(this, "Toca un dominio si una app deja de funcionar para permitirlo.", true), Vistas.anchoCompleto(this, 8))
         listaTop = LinearLayout(this)
         listaTop.orientation = LinearLayout.VERTICAL
-        top.addView(listaTop, Vistas.anchoCompleto(this, 0))
+        top.addView(listaTop, Vistas.anchoCompleto(this, 8))
+        top.addView(
+            Vistas.boton(this, "Ver estadísticas", TipoBoton.TONAL) { startActivity(Intent(this, EstadisticasActivity::class.java)) },
+            Vistas.anchoCompleto(this, 0)
+        )
         raiz.addView(top, Vistas.anchoCompleto(this, 12))
 
         botonActualizar = Vistas.boton(this, "Actualizar listas ahora", TipoBoton.TONAL) { actualizar() }
