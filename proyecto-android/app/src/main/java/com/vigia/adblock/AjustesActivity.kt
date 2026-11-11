@@ -248,6 +248,18 @@ class AjustesActivity : ActividadBase() {
                 reiniciarSiActiva()
             }, Vistas.anchoCompleto(this, 8)
         )
+        m.addView(
+            casilla(
+                "Apps excluidas: bloqueo básico",
+                "Con el Modo Profundo activo, las apps de «Apps excluidas» no salen de la VPN: no se descifran, pero se les " +
+                    "bloquea por DNS y SNI, como en el modo estándar (y su HTTP sin cifrar pasa por el proxy). Necesita Android 10 " +
+                    "o superior. Con el Modo Profundo apagado siguen sin filtrarse.",
+                Ajustes.excluidasBasico(this)
+            ) { v ->
+                Ajustes.setExcluidasBasico(this, v)
+                reiniciarSiActiva()
+            }, Vistas.anchoCompleto(this, 8)
+        )
         m.addView(Vistas.boton(this, "Apps sin descifrar (" + Ajustes.mitmExentas(this).size + ")", TipoBoton.TONAL) { verExentas() }, Vistas.anchoCompleto(this, 0))
     }
 
