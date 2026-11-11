@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AntiAds</string>
+    <string name="tile_label">AntiAds</string>
+    <string name="tile_activo">Activo</string>
+    <string name="tile_desactivado">Desactivado</string>
 </resources>
