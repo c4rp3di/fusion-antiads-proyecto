@@ -2,6 +2,7 @@ package com.vigia.adblock
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import com.vigia.core.red.ConfigVpn
 import com.vigia.core.red.DesvioTcp
 import com.vigia.core.red.VpnEstado
@@ -87,13 +88,18 @@ class AdBlockVpnService : NucleoVpnService() {
         // Encendido -> modo CONEXIONES + el TCP 443 se desvía al MitmProxy.
         val desvio: DesvioTcp? = if (Ajustes.mitmActivo(c)) prepararMitm(c) else null
         val mitm = desvio != null
+        // Excluidas con bloqueo básico: siguen en el túnel (sin descifrar) en vez de salirse de la VPN. Hace falta saber
+        // la app de cada conexión, y eso solo lo da Android 10+.
+        val basico = mitm && Ajustes.excluidasBasico(c) && Build.VERSION.SDK_INT >= 29
+        politica?.basicas = if (basico) Ajustes.excluidas(c) else emptySet()
         RegistroDns.activo = Ajustes.registroDns(c)
         for (id in Laboratorio.DIAGNOSTICO) Laboratorio.activa(c, id) // lee los valores guardados antes de que haga falta
         AdBlockEstado.filtro.bloquearDnsCifrado = Ajustes.bloquearDnsCifrado(c)
         Diagnostico.anotar(
             "sistema",
             "VPN configurada · Modo Profundo " + (if (mitm) "ACTIVO" else "apagado") + " · IPv6 " + (if (mitm) "oculto" else "visible") +
-                " · DNS cifrado " + (if (Ajustes.bloquearDnsCifrado(c)) "bloqueado" else "permitido")
+                " · DNS cifrado " + (if (Ajustes.bloquearDnsCifrado(c)) "bloqueado" else "permitido") +
+                (if (basico) " · excluidas con bloqueo básico" else "")
         )
         MitmEstado.reiniciar()
         MitmEstado.activo = mitm
@@ -106,11 +112,11 @@ class AdBlockVpnService : NucleoVpnService() {
             dnsUpstream = Ajustes.dnsUpstream(c),
             bloquearQuic = profundo,
             // En MitM el DNS deja pasar los dominios bloqueados: el proxy contesta 200 vacío en vez de cortar.
-            filtro = if (mitm) FiltroProfundo(AdBlockEstado.filtro) else AdBlockEstado.filtro,
+            filtro = if (mitm) FiltroProfundo(AdBlockEstado.filtro) { politica?.basicas ?: emptySet() } else AdBlockEstado.filtro,
             respuestaBloqueo = if (Ajustes.bloqueoNxdomain(c)) RespuestaBloqueo.NXDOMAIN else RespuestaBloqueo.CERO,
             observador = ObservadorAdBlock,
             reiniciarSiMuere = true,
-            excluirApps = Ajustes.excluidas(c).toList(),
+            excluirApps = if (basico) emptyList() else Ajustes.excluidas(c).toList(),
             desvioTcp = desvio
         )
     }
