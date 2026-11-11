@@ -237,6 +237,17 @@ class AjustesActivity : ActividadBase() {
                 Dialogos.informar(this, "No se pudo abrir", "Ve a Ajustes › Seguridad › Cifrado y credenciales.")
             }
         }, Vistas.anchoCompleto(this, 8))
+        m.addView(
+            casilla(
+                "Filtrar también HTTP sin cifrar (puerto 80)",
+                "Las webs y descargas sin HTTPS pasan por el proxy, sin certificado: así también se bloquean sus anuncios. " +
+                    "Si una app deja de funcionar con HTTP, desactívalo.",
+                Ajustes.mitmHttp(this)
+            ) { v ->
+                Ajustes.setMitmHttp(this, v)
+                reiniciarSiActiva()
+            }, Vistas.anchoCompleto(this, 8)
+        )
         m.addView(Vistas.boton(this, "Apps sin descifrar (" + Ajustes.mitmExentas(this).size + ")", TipoBoton.TONAL) { verExentas() }, Vistas.anchoCompleto(this, 0))
     }
 
