@@ -46,6 +46,10 @@ object Ajustes {
     fun mitmHttp(c: Context): Boolean = p(c).getBoolean("mitm_http", true)
     fun setMitmHttp(c: Context, v: Boolean) = p(c).edit().putBoolean("mitm_http", v).apply()
 
+    /** Con el Modo Profundo, las «Apps excluidas» no salen de la VPN: no se descifran, pero se filtran por DNS y SNI (Android 10+). */
+    fun excluidasBasico(c: Context): Boolean = p(c).getBoolean("excluidas_basico", false)
+    fun setExcluidasBasico(c: Context, v: Boolean) = p(c).edit().putBoolean("excluidas_basico", v).apply()
+
     /** Apps (o «ip:x.x.x.x» si Android < 10 no da la app) que NO se interceptan: pinning o sin confianza en CA de usuario. */
     fun mitmExentas(c: Context): Set<String> = HashSet(p(c).getStringSet("mitm_exentas", emptySet()) ?: emptySet())
     fun setMitmExentas(c: Context, v: Set<String>) = p(c).edit().putStringSet("mitm_exentas", HashSet(v)).apply()
