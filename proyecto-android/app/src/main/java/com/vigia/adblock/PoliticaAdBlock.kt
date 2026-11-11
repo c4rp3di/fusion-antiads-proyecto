@@ -32,7 +32,17 @@ class PoliticaAdBlock(contexto: Context) : PoliticaMitm {
 
     private fun clave(app: String, ip: String) = if (app == "desconocida" || app.isEmpty()) "ip:" + ip else app
 
-    override fun intermediar(app: String, ip: String): Boolean = !exentas.contains(clave(app, ip))
+    /**
+     * Apps de «Apps excluidas» que, con el Modo Profundo y la opción «bloqueo básico», siguen en el túnel pero SIN
+     * descifrar (las filtran el DNS y el SNI). Las fija el servicio al configurar el túnel.
+     */
+    @Volatile
+    var basicas: Set<String> = emptySet()
+
+    override fun intermediar(app: String, ip: String): Boolean = !basicas.contains(app) && !exentas.contains(clave(app, ip))
+
+    /** El HTTP sin cifrar no necesita certificado: las apps de bloqueo básico sí pasan por el proxy en el puerto 80. */
+    override fun intermediarHttp(app: String, ip: String): Boolean = basicas.contains(app) || !exentas.contains(clave(app, ip))
 
     override fun alFallarHandshake(app: String, ip: String, host: String, motivo: String) {
         if (NAVEGADORES.contains(app)) {
