@@ -346,15 +346,15 @@ abstract class NucleoVpnService : VpnService() {
         val detalle = obs != null && obs.quiereDetalle && cfg.grabando()
         val ahora = System.currentTimeMillis()
         val q = DnsParser.parseConsulta(consulta)
-        // Averiguar la app de origen cuesta una llamada al sistema por consulta: solo si alguien la quiere.
-        val uid = if (detalle) resolverUid(origenIp, puertoOrigen) else -1
-
         val filtro = cfg.filtro
+        // Averiguar la app de origen cuesta una llamada al sistema por consulta: solo si alguien la quiere.
+        val uid = if (detalle || filtro.necesitaAppEnDns) resolverUid(origenIp, puertoOrigen) else -1
+
         if (q != null && q.tipo == 28 && filtro.filtrarAaaa()) {
             escribirTunel(ej, Paquetes.construirUdp(IP_DNS_INT, origenIp, 53, puertoOrigen, DnsParser.construirSinDatos(consulta)))
             return
         }
-        if (q != null && filtro.hayDominios && filtro.dominioBloqueadoEnDns(q.nombre)) {
+        if (q != null && filtro.hayDominios && filtro.dominioBloqueadoEnDnsDe(q.nombre, if (uid >= 0) nombreApp(uid) else "desconocida")) {
             val respuesta = DnsParser.construirBloqueo(consulta, cfg.respuestaBloqueo)
             escribirTunel(ej, Paquetes.construirUdp(IP_DNS_INT, origenIp, 53, puertoOrigen, respuesta))
             if (obs != null) {
