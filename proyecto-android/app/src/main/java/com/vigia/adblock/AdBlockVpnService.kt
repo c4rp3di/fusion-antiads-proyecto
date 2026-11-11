@@ -44,7 +44,7 @@ object ObservadorAdBlock : ObservadorTrafico {
 
     /** Bloqueo por DNS o SNI: cuenta para las estadísticas y queda en el registro (agrupado por app y dominio). */
     override fun alBloqueoDe(dominio: String, capa: String, app: String) {
-        Estadisticas.registrar(dominio)
+        Estadisticas.registrar(dominio, capa, app)
         Diagnostico.anotar(capa, "bloqueado", if (app == "desconocida") "" else app, dominio)
     }
 
@@ -135,7 +135,7 @@ class AdBlockVpnService : NucleoVpnService() {
                 eventos = EventosLab
             ).also { proxy = it }
             p.iniciar()
-            DesvioMitm(p, pol)
+            DesvioMitm(p, pol, Ajustes.mitmHttp(c))
         } catch (e: Exception) {
             VpnEstado.mensaje.value = "No se pudo iniciar el Modo Profundo (MitM): " + (e.message ?: e.javaClass.simpleName)
             null
