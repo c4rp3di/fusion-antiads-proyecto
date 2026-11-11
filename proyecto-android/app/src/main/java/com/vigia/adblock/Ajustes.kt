@@ -42,6 +42,10 @@ object Ajustes {
     fun mitmActivo(c: Context): Boolean = p(c).getBoolean("mitm_activo", false)
     fun setMitmActivo(c: Context, v: Boolean) = p(c).edit().putBoolean("mitm_activo", v).apply()
 
+    /** Modo Profundo también sobre HTTP sin cifrar (puerto 80): pasa por el proxy, sin TLS. */
+    fun mitmHttp(c: Context): Boolean = p(c).getBoolean("mitm_http", true)
+    fun setMitmHttp(c: Context, v: Boolean) = p(c).edit().putBoolean("mitm_http", v).apply()
+
     /** Apps (o «ip:x.x.x.x» si Android < 10 no da la app) que NO se interceptan: pinning o sin confianza en CA de usuario. */
     fun mitmExentas(c: Context): Set<String> = HashSet(p(c).getStringSet("mitm_exentas", emptySet()) ?: emptySet())
     fun setMitmExentas(c: Context, v: Set<String>) = p(c).edit().putStringSet("mitm_exentas", HashSet(v)).apply()
