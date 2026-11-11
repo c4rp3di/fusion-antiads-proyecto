@@ -3,7 +3,10 @@ package com.vigia.mitm
 import java.util.concurrent.ConcurrentHashMap
 
 /** Destino real y app de una conexión redirigida al proxy. */
-class Origen(val ip: String, val puerto: Int, val app: String, val ts: Long = System.currentTimeMillis())
+class Origen(val ip: String, val puerto: Int, val app: String, val ts: Long = System.currentTimeMillis()) {
+    /** HTTP sin cifrar (puerto 80): se atiende sin TLS. */
+    val claro: Boolean get() = puerto == 80
+}
 
 /**
  * El Reenviador del núcleo conecta al proxy por loopback, y por loopback se pierde el destino original. En NetLens el
