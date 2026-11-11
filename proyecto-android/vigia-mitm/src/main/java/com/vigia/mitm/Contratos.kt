@@ -41,6 +41,9 @@ interface PoliticaMitm {
      */
     fun intermediar(app: String, ip: String): Boolean
 
+    /** Igual que [intermediar] pero para HTTP sin cifrar (puerto 80), donde no hay certificado que rechazar. */
+    fun intermediarHttp(app: String, ip: String): Boolean = intermediar(app, ip)
+
     /**
      * El cliente rechazó nuestro certificado (SSL pinning, o la app no confía en CAs de usuario). La app debe
      * recordar que no se vuelva a intermediar y la siguiente conexión (el reintento) irá directa al servidor real.
