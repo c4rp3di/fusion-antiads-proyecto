@@ -67,3 +67,8 @@ Solo puede haber una VPN activa: desactiva el Soberano+ antes de usar AntiAds.
 - **Estadisticas.kt** ahora guarda 30 días de totales, bloqueos por hora (solo hoy), por capa (DNS/SNI/proxy), y los dominios (hasta 2000 en memoria, 200 guardados) y apps (40) de hoy. Al cambiar de día, los 100 dominios y 30 apps más bloqueados pasan al archivo («pasados», JSON en SharedPreferences). Compatible con los datos de 7 días de versiones anteriores. Las apps solo se conocen si el túnel las resolvió (Modo Profundo o captura de detalle).
 - **EstadisticasActivity** + **GraficoBarras** (vista propia, sin librerías).
 - **HTTP plano:** `DesvioMitm(incluirHttp)` desvía también el puerto 80; `MitmProxy.atender` salta el handshake TLS si `Origen.claro` y conecta al servidor real con un socket protegido. Si los primeros bytes no son un método HTTP, túnel opaco. Respeta «Apps sin descifrar».
+
+## Excluidas con bloqueo básico (Modo Profundo)
+- Con la casilla activada y el Modo Profundo en marcha, `excluirApps` va vacío y `PoliticaAdBlock.basicas` lleva las apps excluidas: `intermediar()` devuelve falso para ellas (443 directo, sin descifrar, con SNI del núcleo) e `intermediarHttp()` verdadero (el puerto 80 sí pasa por el proxy).
+- DNS: `FiltroTrafico.necesitaAppEnDns` / `dominioBloqueadoEnDnsDe(nombre, app)`. `FiltroProfundo` solo bloquea por DNS a las apps básicas; el resto sigue pasando al proxy. El túnel resuelve la app de cada consulta solo si hay apps básicas (una llamada al sistema por consulta). También se aplica a consultas a DNS externos (Reenviador).
+- QUIC bloqueado e IPv6 oculto afectan a todo el túnel, también a ellas. Android < 10: la opción no hace nada (las excluidas siguen saliéndose de la VPN).
