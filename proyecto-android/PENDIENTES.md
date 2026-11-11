@@ -17,6 +17,7 @@ Estado: **AntiAds** es la app de pruebas (laboratorio, diagnóstico, técnicas c
 - [x] Editor de sitios dentro de la app (Ajustes › Laboratorio › Sitios).
 
 - [x] Pantalla de estadísticas (Hoy / 7 / 30 días): gráfico por horas o días, desglose por capa, dominios y apps con buscador, copiar CSV. Botón en «Más bloqueados hoy».
+- [x] **Apps excluidas con bloqueo básico en Modo Profundo** (Ajustes › Modo Profundo, desactivado por defecto, Android 10+): las excluidas se quedan en el túnel sin descifrar; las filtran DNS + SNI y su HTTP sin cifrar pasa por el proxy. SIN PROBAR en dispositivo.
 - [x] Quick Settings Tile para activar/desactivar la protección.
 
 ## Pendiente
