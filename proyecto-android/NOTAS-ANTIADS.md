@@ -62,3 +62,8 @@ Solo puede haber una VPN activa: desactiva el Soberano+ antes de usar AntiAds.
 - Caché de certificados con tope (LRU, 400). `CaManager.regenerar()` y botón «Regenerar certificado CA» en Ajustes (con aviso de quitar la antigua de Android).
 - `vigia-mitm/src/test/.../HttpCodecTest.kt`: pruebas de JVM del códec HTTP (no se ejecutan con `assembleDebug`).
 - Ajustes › Laboratorio › Sitios: añadir, editar y quitar sitios sin importar JSON. Guarda una copia editable de las reglas; «Volver a las reglas integradas» la borra.
+
+## Estadísticas y HTTP plano
+- **Estadisticas.kt** ahora guarda 30 días de totales, bloqueos por hora (solo hoy), por capa (DNS/SNI/proxy), y los dominios (hasta 2000 en memoria, 200 guardados) y apps (40) de hoy. Al cambiar de día, los 100 dominios y 30 apps más bloqueados pasan al archivo («pasados», JSON en SharedPreferences). Compatible con los datos de 7 días de versiones anteriores. Las apps solo se conocen si el túnel las resolvió (Modo Profundo o captura de detalle).
+- **EstadisticasActivity** + **GraficoBarras** (vista propia, sin librerías).
+- **HTTP plano:** `DesvioMitm(incluirHttp)` desvía también el puerto 80; `MitmProxy.atender` salta el handshake TLS si `Origen.claro` y conecta al servidor real con un socket protegido. Si los primeros bytes no son un método HTTP, túnel opaco. Respeta «Apps sin descifrar».
