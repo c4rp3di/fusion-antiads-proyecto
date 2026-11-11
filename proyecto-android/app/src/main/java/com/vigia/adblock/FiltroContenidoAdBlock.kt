@@ -58,7 +58,7 @@ object MitmEstado {
 object EventosAdBlock : EventosMitm {
     override fun alBloquear(host: String, ruta: String, tipo: TipoRecurso) {
         MitmEstado.vaciados.incrementAndGet()
-        Estadisticas.registrar(host)
+        Estadisticas.registrar(host, "proxy")
     }
 
     override fun alInyectarCss(host: String) { MitmEstado.paginasLimpias.incrementAndGet() }
