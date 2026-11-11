@@ -770,12 +770,17 @@ class Reenviador(
         }
         if (dp == 53 && filtro.hayDominios) {
             val consulta = DnsParser.parseConsulta(carga)
-            if (consulta != null && filtro.dominioBloqueadoEnDns(consulta.nombre)) {
-                val respuesta = DnsParser.construirBloqueo(carga, respuestaBloqueo)
-                escribir(Paquetes.construirUdp(destino, origen, 53, sp, respuesta))
-                alBloqueo(consulta.nombre, "dns", "desconocida")
-                alDns(-1, "desconocida", carga, respuesta)
-                return
+            if (consulta != null) {
+                // Con un filtro que distingue apps (excluidas con bloqueo básico) se averigua la app de origen.
+                val uidDns = if (filtro.necesitaAppEnDns) uidDe(Paquetes.PROTO_UDP, sp, destino, dp) else -1
+                val appDns = if (uidDns >= 0) nombreApp(uidDns) else "desconocida"
+                if (filtro.dominioBloqueadoEnDnsDe(consulta.nombre, appDns)) {
+                    val respuesta = DnsParser.construirBloqueo(carga, respuestaBloqueo)
+                    escribir(Paquetes.construirUdp(destino, origen, 53, sp, respuesta))
+                    alBloqueo(consulta.nombre, "dns", appDns)
+                    alDns(uidDns, appDns, carga, respuesta)
+                    return
+                }
             }
         }
         if (dp == 443 && bloquearQuic) {
