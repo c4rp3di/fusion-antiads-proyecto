@@ -90,16 +90,26 @@ class MitmProxy(
     private fun atender(cliente: Socket) {
         val puertoCliente = cliente.port
         val origen = Origenes.tomar(puertoCliente)
-        var ssl: SSLSocket? = null
-        var remoto: SSLSocket? = null
+        var ssl: Socket? = null
+        var remoto: Socket? = null
         try {
             if (origen == null) return // no la desvió nuestro núcleo
             cliente.tcpNoDelay = true
             cliente.soTimeout = 20_000
-            ssl = fabrica!!.createSocket(cliente, null, puertoCliente, true) as SSLSocket
-            ssl.useClientMode = false
+            if (origen.claro) {
+                // HTTP sin cifrar: sin handshake ni certificado. El nombre de host sale de la cabecera Host.
+                ssl = cliente
+                cliente.soTimeout = 60_000
+                remoto = conectarRemotoClaro(origen)
+                eventos.alAbrirConexion(origen.app, origen.ip)
+                bucle(cliente, remoto, origen.ip, true)
+                return
+            }
+            val tls = fabrica!!.createSocket(cliente, null, puertoCliente, true) as SSLSocket
+            ssl = tls
+            tls.useClientMode = false
             try {
-                ssl.startHandshake()
+                tls.startHandshake()
             } catch (e: Exception) {
                 // El navegador/app no aceptó nuestro certificado: SSL pinning, o no confía en CAs de usuario.
                 val host = hojas.nombreVisto(puertoCliente) ?: origen.ip
@@ -111,11 +121,11 @@ class MitmProxy(
                 return
             }
             val host = (hojas.nombreVisto(puertoCliente) ?: origen.ip).lowercase()
-            ssl.soTimeout = 60_000
+            tls.soTimeout = 60_000
             remoto = conectarRemoto(origen, host)
             eventos.alAbrirConexion(origen.app, host)
             eventos.alConexionDescifrada(host)
-            bucle(ssl, remoto, host)
+            bucle(tls, remoto, host, false)
         } catch (e: Exception) {
             if (origen != null && e !is EOFException && e !is SocketTimeoutException) {
                 eventos.alError(origen.ip, resumen(e))
@@ -130,6 +140,40 @@ class MitmProxy(
     private fun esRechazoDelCliente(e: Exception): Boolean = e !is SocketTimeoutException && (e is SSLException || e is EOFException || e is java.net.SocketException)
 
     private fun resumen(e: Throwable): String = (e.javaClass.simpleName + ": " + (e.message ?: "")).take(160)
+
+    /** Conexión TCP al servidor real para HTTP sin cifrar. Protegida: el propio proxy no debe volver a entrar en la VPN. */
+    private fun conectarRemotoClaro(o: Origen): Socket {
+        val s = Socket()
+        try {
+            s.bind(null)
+            protector(s)
+            s.tcpNoDelay = true
+            s.connect(InetSocketAddress(InetAddress.getByName(o.ip), o.puerto), 10_000)
+            s.soTimeout = 30_000
+            return s
+        } catch (e: Exception) {
+            cerrar(s)
+            throw e
+        }
+    }
+
+    /** ¿Empieza como una petición HTTP/1.x? El puerto 80 lo usan a veces otros protocolos: esos se dejan pasar tal cual. */
+    private fun pareceHttp(e: Entrada): Boolean {
+        e.mark(16)
+        val b = ByteArray(8)
+        var n = 0
+        try {
+            while (n < b.size) {
+                val k = e.read(b, n, b.size - n)
+                if (k < 0) break
+                n += k
+            }
+        } finally {
+            e.reset()
+        }
+        val s = String(b, 0, n, Charsets.ISO_8859_1)
+        return METODOS.any { s.startsWith("$it ") }
+    }
 
     private fun conectarRemoto(o: Origen, host: String): SSLSocket {
         val crudo = Socket()
@@ -173,11 +217,17 @@ class MitmProxy(
 
     // ------------------------------------------------------------------ bucle HTTP
 
-    private fun bucle(c: SSLSocket, r: SSLSocket, sni: String) {
+    private fun bucle(c: Socket, r: Socket, sni: String, claro: Boolean) {
         val cin = Entrada(c.inputStream)
         val cout = BufferedOutputStream(c.outputStream, 16384)
         val rin = Entrada(r.inputStream)
         val rout = BufferedOutputStream(r.outputStream, 16384)
+
+        if (claro && !pareceHttp(cin)) {
+            // No es HTTP (otro protocolo en el puerto 80): bytes opacos en ambos sentidos, sin tocar nada.
+            tunel(c, r, cin, rin)
+            return
+        }
 
         while (true) {
             val req = HttpCodec.leerPeticion(cin) ?: return
@@ -524,5 +574,6 @@ class MitmProxy(
 
     companion object {
         private const val LIMITE_HTML = 3 * 1024 * 1024
+        private val METODOS = listOf("GET", "POST", "HEAD", "PUT", "DELETE", "OPTIONS", "PATCH", "CONNECT", "TRACE")
     }
 }
