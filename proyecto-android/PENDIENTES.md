@@ -16,9 +16,12 @@ Estado: **AntiAds** es la app de pruebas (laboratorio, diagnóstico, técnicas c
 - [x] Pruebas de `HttpCodec` (`./gradlew :vigia-mitm:testDebugUnitTest`; aún no se ejecutan en el flujo de compilación).
 - [x] Editor de sitios dentro de la app (Ajustes › Laboratorio › Sitios).
 
+- [x] Pantalla de estadísticas (Hoy / 7 / 30 días): gráfico por horas o días, desglose por capa, dominios y apps con buscador, copiar CSV. Botón en «Más bloqueados hoy».
+- [x] Quick Settings Tile para activar/desactivar la protección.
+
 ## Pendiente
 ### Medianos
-- [ ] **HTTP plano (puerto 80) en modo MitM.** Con el MitM activo el DNS no bloquea y el 80 no pasa por el proxy: esos anuncios se cuelan (el 1.0 sí los bloqueaba). Desviar también el 80 al proxy, sin TLS.
+- [x] **HTTP plano (puerto 80) en modo MitM.** El TCP 80 se desvía también al proxy, que lo atiende sin TLS (bloqueo, CSS y scripts como en HTTPS). Si el tráfico no empieza como HTTP se deja pasar tal cual. Interruptor en Ajustes › Modo Profundo (por defecto activado). SIN PROBAR en dispositivo.
 - [ ] **MitM solo en navegadores** (opción). Casi ninguna otra app acepta una CA de usuario y cada una pierde una conexión al primer intento.
 - [ ] **Lista blanca por host con caducidad.** Hoy una app entra entera al primer fallo de handshake (los navegadores ya no).
 - [ ] **App en los bloqueos DNS/SNI.** El núcleo solo la conoce si el túnel la ha resuelto; hoy queda vacía sin la captura de detalle.
